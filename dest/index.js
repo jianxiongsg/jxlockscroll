@@ -9,38 +9,45 @@ var preventDefault = function (e) {
         e.preventDefault();
 };
 var initPos = function (e) {
-    initClientY = e.touches[0].clientY;
+    if (e.targetTouches.length === 1) {
+        initClientY = e.targetTouches[0].clientY;
+    }
 };
 function isToBottomScroll(element) {
     var maxScroll = element.scrollHeight - element.clientHeight;
     return element.scrollTop + 1 >= maxScroll ? true : false;
 }
 function touchmove(e, element) {
-    var scrolldir = e.touches[0].clientY - initClientY;
-    if (scrolldir > 0 && element.scrollTop === 0) {
-        preventDefault(e);
+    console.log(e, element);
+    if (e.targetTouches.length === 1) {
+        var scrolldir = e.targetTouches[0].clientY - initClientY;
+        if (scrolldir > 0 && element.scrollTop === 0) {
+            preventDefault(e);
+            return;
+        }
+        if (scrolldir < 0 && isToBottomScroll(element)) {
+            preventDefault(e);
+            return;
+        }
+        e.stopPropagation();
         return;
     }
-    if (scrolldir < 0 && isToBottomScroll(element)) {
-        preventDefault(e);
-        return;
-    }
-    e.stopPropagation();
-    return;
 }
 /**
 * 禁止背景滑动，dom里面可以滑动
 * @param element 滑动的dom
 */
 function disableDodyScroll(element) {
-    if (locks.some(function (lock) { return lock === element; })) {
-        return;
+    if (element) {
+        if (locks.some(function (lock) { return lock === element; })) {
+            return;
+        }
+        locks.push(element);
+        element.addEventListener('touchstart', initPos, { passive: false });
+        element.addEventListener('touchmove', function (e) {
+            touchmove(e, element);
+        }, { passive: false });
     }
-    locks.push(element);
-    element.addEventListener('touchstart', initPos, { passive: false });
-    element.addEventListener('touchmove', function (e) {
-        touchmove(e, element);
-    }, { passive: false });
     if (!documentListenerAdded) {
         document.addEventListener('touchmove', preventDefault, { passive: false });
         documentListenerAdded = true;
@@ -52,13 +59,17 @@ exports.disableDodyScroll = disableDodyScroll;
  * @param element dom
  */
 function enableBodyScroll(element) {
-    element.removeEventListener('touchstart', initPos);
-    element.removeEventListener('touchmove', function (e) {
-        touchmove(e, element);
-    });
-    var idx = locks.indexOf(element);
-    if (idx != -1) {
-        locks.splice(idx, 1);
+    if (element) {
+        element.ontouchstart = null;
+        element.ontouchmove = null;
+        element.removeEventListener('touchstart', initPos);
+        element.removeEventListener('touchmove', function (e) {
+            touchmove(e, element);
+        });
+        var idx = locks.indexOf(element);
+        if (idx != -1) {
+            locks.splice(idx, 1);
+        }
     }
     if (locks.length === 0 && documentListenerAdded) {
         document.removeEventListener('touchmove', preventDefault);

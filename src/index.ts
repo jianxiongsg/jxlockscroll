@@ -10,7 +10,10 @@ var locks:HTMLElement[] = [];
   }
 
   const initPos=(e:any)=>{
-      initClientY = e.touches[0].clientY;
+      if(e.targetTouches.length === 1){
+        initClientY = e.targetTouches[0].clientY;
+      }
+      
   }
 
   function isToBottomScroll(element:HTMLElement){
@@ -19,31 +22,36 @@ var locks:HTMLElement[] = [];
   }
 
   function touchmove(e:any,element:HTMLElement){
-      var scrolldir = e.touches[0].clientY - initClientY;
-      if(scrolldir > 0 && element.scrollTop === 0){
-          preventDefault(e);
-          return;
+      console.log(e,element)
+      if(e.targetTouches.length === 1){
+        var scrolldir = e.targetTouches[0].clientY - initClientY;
+        if(scrolldir > 0 && element.scrollTop === 0){
+            preventDefault(e);
+            return;
+        }
+        if(scrolldir < 0 && isToBottomScroll(element)){
+            preventDefault(e);
+            return;
+        }
+        e.stopPropagation();
+        return;
       }
-      if(scrolldir < 0 && isToBottomScroll(element)){
-          preventDefault(e);
-          return;
-      }
-      e.stopPropagation();
-      return;
   }
   /**
  * 禁止背景滑动，dom里面可以滑动
  * @param element 滑动的dom
  */
-  export function disableDodyScroll(element:HTMLElement){
-      if(locks.some(lock=>lock === element)){
-          return;
+  export function disableDodyScroll(element?:HTMLElement){
+      if(element){
+        if(locks.some(lock=>lock === element)){
+            return;
+        }
+        locks.push(element);
+        element.addEventListener('touchstart',initPos,{passive:false});
+        element.addEventListener('touchmove',(e:any)=>{
+            touchmove(e,element);
+        },{passive:false});
       }
-      locks.push(element);
-      element.addEventListener('touchstart',initPos,{passive:false});
-      element.addEventListener('touchmove',(e:any)=>{
-          touchmove(e,element);
-      },{passive:false});
       if(!documentListenerAdded){
           document.addEventListener('touchmove',preventDefault,{passive:false})
           documentListenerAdded = true;
@@ -54,15 +62,20 @@ var locks:HTMLElement[] = [];
  * 移除禁止背景滑动的事件
  * @param element dom 
  */
-  export function enableBodyScroll(element:HTMLElement){
-      element.removeEventListener('touchstart',initPos);
-      element.removeEventListener('touchmove',(e)=>{
-          touchmove(e,element);
-      });
-      var idx = locks.indexOf(element);
-      if(idx != -1){
-          locks.splice(idx,1);
+  export function enableBodyScroll(element?:HTMLElement){
+      if(element){
+        element.ontouchstart = null;
+        element.ontouchmove = null;
+        element.removeEventListener('touchstart',initPos);
+        element.removeEventListener('touchmove',(e)=>{
+            touchmove(e,element);
+        });
+        var idx = locks.indexOf(element);
+        if(idx != -1){
+            locks.splice(idx,1);
+        }
       }
+      
       if(locks.length === 0 && documentListenerAdded){
           document.removeEventListener('touchmove',preventDefault)
       }

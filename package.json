@@ -1,6 +1,6 @@
 {
   "name": "jxlockscroll",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "禁止弹窗背景滚动",
   "main": "./dest/index.js",
   "scripts": {
